@@ -36,23 +36,44 @@ class AudioProcessor:
             return resampler(waveform), target_sample_rate
         return waveform, original_sample_rate
 
-    def split_audio(self, waveform, sample_rate):
-        segment_samples = self.segment_duration * sample_rate
+    
+    def split_audio(waveform, sample_rate):
+        segment_samples = segment_duration * sample_rate
         total_samples = waveform.size(0)
-
+    
         segments = []
-        for start in range(0, total_samples, segment_samples):
-            end = start + segment_samples
-            if end <= total_samples:
+        # If the audio is shorter than the segment duration, just use the entire audio
+        if total_samples <= segment_samples:
+            segments.append(waveform)
+        else:
+            # Split the audio into segments of the specified duration
+            for start in range(0, total_samples, segment_samples):
+                end = min(start + segment_samples, total_samples)
                 segment = waveform[start:end]
                 segments.append(segment)
         
-        # In case audio length is shorter than segment length.
-        if len(segments) == 0: 
-            segment = waveform
-            segments.append(segment)
-
+        # Ensure we have at least one segment
+        if len(segments) == 0:
+            segments.append(waveform)
+    
         return segments
+    # def split_audio(self, waveform, sample_rate):
+    #     segment_samples = self.segment_duration * sample_rate
+    #     total_samples = waveform.size(0)
+
+    #     segments = []
+    #     for start in range(0, total_samples, segment_samples):
+    #         end = start + segment_samples
+    #         if end <= total_samples:
+    #             segment = waveform[start:end]
+    #             segments.append(segment)
+        
+    #     # In case audio length is shorter than segment length.
+    #     if len(segments) == 0: 
+    #         segment = waveform
+    #         segments.append(segment)
+
+    #     return segments
 
     def process_audio_file(self, file_path, output_dir):
         print(f"Processing {file_path}")

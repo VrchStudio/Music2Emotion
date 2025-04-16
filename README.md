@@ -23,7 +23,12 @@ We present a unified multitask learning framework for Music Emotion Recognition 
 
 ## Change Log
 
-- 2025-02-10: Released Music2Emo v1.0, featuring both categorical and VA emotion prediction from music.
+- 2025-04-16:  
+  - Improved handling of short audio files (under 10 seconds) in the Hugging Face demo.  
+  - Fixed edge case bugs in chord processing (e.g., unrecognized "X" chord root).  
+
+- 2025-02-10:  
+  - Released Music2Emo v1.0, featuring both categorical and VA emotion prediction from music.
 
 ## Quickstart Guide
 

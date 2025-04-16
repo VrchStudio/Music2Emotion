@@ -109,7 +109,7 @@ class DEAMDataset(data.Dataset):
             if len(chord_arr) == 1:
                 if chord_arr[0] == "X":
                     chord_arr[0] = "N"
-                chordRootID = chordRootDic[chord_arr[0]]
+                chordRootID = self.chordRootDic[chord_arr[0]]
                 if chord_arr[0] == "N" or chord_arr[0] == "X":
                     chordAttrID = 0
                 else:

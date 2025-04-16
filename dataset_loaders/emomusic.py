@@ -105,7 +105,9 @@ class EmoMusicDataset(data.Dataset):
         for start, end, chord in chords:
             chord_arr = chord.split(":")
             if len(chord_arr) == 1:
-                chordRootID = self.chordRootDic[chord_arr[0]]
+                if chord_arr[0] == "X":
+                    chord_arr[0] = "N"
+                chordRootID = chordRootDic[chord_arr[0]]
                 if chord_arr[0] == "N" or chord_arr[0] == "X":
                     chordAttrID = 0
                 else:

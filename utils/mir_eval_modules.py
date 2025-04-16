@@ -26,24 +26,64 @@ def idx2voca_chord():
         idx2voca_chord[i] = chord
     return idx2voca_chord
 
+
+
+
 def audio_file_to_features(audio_file, config):
     original_wav, sr = librosa.load(audio_file, sr=config.mp3['song_hz'], mono=True)
+    song_length_second = len(original_wav) / sr
+    inst_samples = int(sr * config.mp3['inst_len'])
     currunt_sec_hz = 0
-    while len(original_wav) > currunt_sec_hz + config.mp3['song_hz'] * config.mp3['inst_len']:
+    feature = None
+
+    while currunt_sec_hz + inst_samples <= len(original_wav):
         start_idx = int(currunt_sec_hz)
-        end_idx = int(currunt_sec_hz + config.mp3['song_hz'] * config.mp3['inst_len'])
-        tmp = librosa.cqt(original_wav[start_idx:end_idx], sr=sr, n_bins=config.feature['n_bins'], bins_per_octave=config.feature['bins_per_octave'], hop_length=config.feature['hop_length'])
-        if start_idx == 0:
-            feature = tmp
-        else:
-            feature = np.concatenate((feature, tmp), axis=1)
+        end_idx = int(currunt_sec_hz + inst_samples)
+        tmp = librosa.cqt(
+            original_wav[start_idx:end_idx],
+            sr=sr,
+            n_bins=config.feature['n_bins'],
+            bins_per_octave=config.feature['bins_per_octave'],
+            hop_length=config.feature['hop_length']
+        )
+        feature = tmp if feature is None else np.concatenate((feature, tmp), axis=1)
         currunt_sec_hz = end_idx
-    tmp = librosa.cqt(original_wav[currunt_sec_hz:], sr=sr, n_bins=config.feature['n_bins'], bins_per_octave=config.feature['bins_per_octave'], hop_length=config.feature['hop_length'])
-    feature = np.concatenate((feature, tmp), axis=1)
+
+    # Handle remaining samples (including case where audio < inst_len)
+    if currunt_sec_hz < len(original_wav):
+        tmp = librosa.cqt(
+            original_wav[currunt_sec_hz:],
+            sr=sr,
+            n_bins=config.feature['n_bins'],
+            bins_per_octave=config.feature['bins_per_octave'],
+            hop_length=config.feature['hop_length']
+        )
+        feature = tmp if feature is None else np.concatenate((feature, tmp), axis=1)
+
     feature = np.log(np.abs(feature) + 1e-6)
     feature_per_second = config.mp3['inst_len'] / config.model['timestep']
-    song_length_second = len(original_wav)/config.mp3['song_hz']
+
     return feature, feature_per_second, song_length_second
+
+
+# def audio_file_to_features(audio_file, config):
+#     original_wav, sr = librosa.load(audio_file, sr=config.mp3['song_hz'], mono=True)
+#     currunt_sec_hz = 0
+#     while len(original_wav) > currunt_sec_hz + config.mp3['song_hz'] * config.mp3['inst_len']:
+#         start_idx = int(currunt_sec_hz)
+#         end_idx = int(currunt_sec_hz + config.mp3['song_hz'] * config.mp3['inst_len'])
+#         tmp = librosa.cqt(original_wav[start_idx:end_idx], sr=sr, n_bins=config.feature['n_bins'], bins_per_octave=config.feature['bins_per_octave'], hop_length=config.feature['hop_length'])
+#         if start_idx == 0:
+#             feature = tmp
+#         else:
+#             feature = np.concatenate((feature, tmp), axis=1)
+#         currunt_sec_hz = end_idx
+#     tmp = librosa.cqt(original_wav[currunt_sec_hz:], sr=sr, n_bins=config.feature['n_bins'], bins_per_octave=config.feature['bins_per_octave'], hop_length=config.feature['hop_length'])
+#     feature = np.concatenate((feature, tmp), axis=1)
+#     feature = np.log(np.abs(feature) + 1e-6)
+#     feature_per_second = config.mp3['inst_len'] / config.model['timestep']
+#     song_length_second = len(original_wav)/config.mp3['song_hz']
+#     return feature, feature_per_second, song_length_second
 
 # Audio files with format of wav and mp3
 def get_audio_paths(audio_dir):

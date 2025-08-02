@@ -1,6 +1,6 @@
-from utils.transformer_modules import *
-from utils.transformer_modules import _gen_timing_signal, _gen_bias_mask
-from utils.hparams import HParams
+from .transformer_modules import *
+from .transformer_modules import _gen_timing_signal, _gen_bias_mask
+from .hparams import HParams
 
 use_cuda = torch.cuda.is_available()
 

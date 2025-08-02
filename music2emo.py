@@ -1,16 +1,16 @@
 import os
 import mir_eval
 import pretty_midi as pm
-from utils import logger
-from utils.btc_model import BTC_model
+from .utils import logger
+from .utils.btc_model import BTC_model
 # from preprocess.BTC.btc_model import *
 
-from utils.transformer_modules import *
-from utils.transformer_modules import _gen_timing_signal, _gen_bias_mask
-from utils.hparams import HParams
+from .utils.transformer_modules import *
+from .utils.transformer_modules import _gen_timing_signal, _gen_bias_mask
+from .utils.hparams import HParams
 
 
-from utils.mir_eval_modules import audio_file_to_features, idx2chord, idx2voca_chord, get_audio_paths, get_lab_paths
+from .utils.mir_eval_modules import audio_file_to_features, idx2chord, idx2voca_chord, get_audio_paths, get_lab_paths
 import argparse
 import warnings
 from music21 import converter
@@ -25,8 +25,8 @@ from omegaconf import DictConfig
 import hydra
 from hydra.utils import to_absolute_path
 from transformers import Wav2Vec2FeatureExtractor, AutoModel
-from utils.mert import FeatureExtractorMERT
-from model.linear_mt_attn_ck import FeedforwardModelMTAttnCK
+from .utils.mert import FeatureExtractorMERT
+from .model.linear_mt_attn_ck import FeedforwardModelMTAttnCK
 from pathlib import Path
 import gradio as gr
 
@@ -191,6 +191,11 @@ class Music2emo:
         use_cuda = torch.cuda.is_available()
         self.device = torch.device("cuda" if use_cuda else "cpu")
 
+        # Convert relative path to absolute path based on this module's location
+        if not os.path.isabs(model_weights):
+            module_dir = os.path.dirname(os.path.abspath(__file__))
+            model_weights = os.path.join(module_dir, model_weights)
+        
         self.feature_extractor = FeatureExtractorMERT(model_name='m-a-p/MERT-v1-95M', device=self.device, sr=resample_rate)
         self.model_weights = model_weights
 
@@ -217,7 +222,9 @@ class Music2emo:
         self.music2emo_model.eval()
 
     def predict(self, audio, threshold = 0.5):
-
+        # Get the module directory for relative paths
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        
         feature_dir = Path("./temp_out")
         output_dir = Path("./output")
         current_dir = Path("./")
@@ -282,10 +289,10 @@ class Music2emo:
         final_embedding_mert.to(self.device)
 
         # --- Chord feature extract ---
-        config = HParams.load("./inference/data/run_config.yaml")
+        config = HParams.load(os.path.join(module_dir, "inference/data/run_config.yaml"))
         config.feature['large_voca'] = True
         config.model['num_chords'] = 170
-        model_file = './inference/data/btc_model_large_voca.pt'
+        model_file = os.path.join(module_dir, 'inference/data/btc_model_large_voca.pt')
         idx_to_chord = idx2voca_chord()
         model = BTC_model(config=config.model).to(self.device)
 
@@ -383,14 +390,14 @@ class Music2emo:
         idx_to_tonic = {idx: tonic for tonic, idx in tonic_to_idx.items()}
         idx_to_mode = {idx: mode for mode, idx in mode_to_idx.items()}
 
-        with open('inference/data/chord.json', 'r') as f:
+        with open(os.path.join(module_dir, 'inference/data/chord.json'), 'r') as f:
             chord_to_idx = json.load(f)
-        with open('inference/data/chord_inv.json', 'r') as f:
+        with open(os.path.join(module_dir, 'inference/data/chord_inv.json'), 'r') as f:
             idx_to_chord = json.load(f)
             idx_to_chord = {int(k): v for k, v in idx_to_chord.items()}  # Ensure keys are ints        
-        with open('inference/data/chord_root.json') as json_file:
+        with open(os.path.join(module_dir, 'inference/data/chord_root.json')) as json_file:
             chordRootDic = json.load(json_file)
-        with open('inference/data/chord_attr.json') as json_file:
+        with open(os.path.join(module_dir, 'inference/data/chord_attr.json')) as json_file:
             chordAttrDic = json.load(json_file)
 
         try:
@@ -498,11 +505,14 @@ class Music2emo:
 
         
 
-        tag_list = np.load ( "./inference/data/tag_list.npy")
+        tag_list = np.load(os.path.join(module_dir, "inference/data/tag_list.npy"))
         tag_list = tag_list[127:]
         mood_list = [t.replace("mood/theme---", "") for t in tag_list]
         threshold = threshold
         predicted_moods = [mood_list[i] for i, p in enumerate(probs.squeeze().tolist()) if p > threshold]
+        
+        # Create mood probability dictionary for all moods
+        mood_probs = {mood_list[i]: probs.squeeze().tolist()[i] for i in range(len(mood_list))}
 
         # Print the results
         # print("Predicted Mood Tags:", predicted_moods)
@@ -527,7 +537,8 @@ class Music2emo:
         model_output_dic = {
             "valence": valence,
             "arousal": arousal,
-            "predicted_moods": predicted_moods
+            "predicted_moods": predicted_moods,
+            "mood_probs": mood_probs
         }
 
         return model_output_dic
